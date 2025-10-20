@@ -1,0 +1,57 @@
+name: Auto PR with Copilot
+
+on:
+  workflow_dispatch:
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js (for Copilot CLI)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Copilot CLI
+        run: |
+          npm install -g @github/copilot-cli
+
+      - name: Authenticate Copilot CLI
+        env:
+          GITHUB_TOKEN: ${{ secrets.COPILOT_PAT }}
+        run: |
+          echo "$GITHUB_TOKEN" | copilot auth login --token-stdin
+
+      - name: Use Copilot CLI to modify code
+        run: |
+          copilot suggest src/math.js --intent "Add input validation to add function" > tmp.patch
+          # Apply the suggested patch if generated
+          if [ -s tmp.patch ]; then
+            git apply tmp.patch || true
+          fi
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b auto-pr-${{ github.run_id }}
+          git add .
+          git commit -m "Auto update via Copilot CLI" || echo "No changes to commit"
+          git push origin auto-pr-${{ github.run_id }}
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: auto-pr-${{ github.run_id }}
+          title: "Auto PR: Copilot CLI update"
+          body: "This PR was automatically generated using Copilot CLI."
