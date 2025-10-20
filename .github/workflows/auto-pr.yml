@@ -27,7 +27,7 @@ jobs:
 
       - name: Authenticate Copilot CLI
         env:
-          GITHUB_TOKEN: ${{ secrets.COPILOT_PAT }}
+          GITHUB_TOKEN: ${{ secrets.PAT2 }}
         run: |
           echo "$GITHUB_TOKEN" | copilot auth login --token-stdin
 
